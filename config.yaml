@@ -1,0 +1,19 @@
+llm:
+  # provider: none | openai | claude
+  # DeepSeek can use provider: openai with base_url: https://api.deepseek.com/v1
+  provider: none
+  api_key: ${OPENAI_API_KEY}
+  model: gpt-4o-mini
+  base_url: https://api.openai.com/v1
+  timeout: 60
+
+scraper:
+  concurrency: 3
+  rate_limit: 0.3
+  timeout: 15
+  max_pages: 30
+  user_agent: Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36
+
+output:
+  dir: ./output
+  filename_pattern: "{index:03d}_{date}_{title}.docx"
