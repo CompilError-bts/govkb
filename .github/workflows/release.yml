@@ -1,0 +1,58 @@
+name: Build Windows Release
+
+on:
+  push:
+    tags:
+      - "v*"
+
+permissions:
+  contents: write
+
+jobs:
+  build-windows:
+    name: Build Windows amd64 executables
+    runs-on: windows-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          architecture: "x64"
+
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          python -m pip install -r requirements.txt pyinstaller
+
+      - name: Build GUI executable
+        run: |
+          pyinstaller --noconfirm --clean --onefile --windowed --name govkb-gui govkb/gui.py
+
+      - name: Build CLI executable
+        run: |
+          pyinstaller --noconfirm --clean --onefile --name govkb govkb/main.py
+
+      - name: Prepare release bundle
+        shell: pwsh
+        run: |
+          New-Item -ItemType Directory -Force release | Out-Null
+          Copy-Item dist/govkb-gui.exe release/
+          Copy-Item dist/govkb.exe release/
+          Copy-Item README.md release/
+          Copy-Item config.yaml release/config.example.yaml
+          Compress-Archive -Path release/* -DestinationPath govkb-windows-amd64.zip -Force
+
+      - name: Create GitHub Release
+        uses: softprops/action-gh-release@v2
+        with:
+          files: |
+            govkb-windows-amd64.zip
+            dist/govkb-gui.exe
+            dist/govkb.exe
+          draft: false
+          prerelease: false
+          generate_release_notes: true
