@@ -1,56 +1,48 @@
 # GovKB
 
-GovKB is a Python CLI tool for building a local knowledge base from Chinese government portal news. Given a government website URL, it discovers the news section, scrapes recent articles, extracts article bodies, and writes one `.docx` file per article.
-
-The current implementation focuses on URL-driven workflows:
-
-```bash
-python -m govkb.main run --url www.xianyang.gov.cn --months 3
-```
-
-## What It Does
-
-- Analyzes a government portal homepage and finds a suitable news column.
-- Verifies the detected list page by extracting article title, URL, and date.
-- Scrapes recent articles by date range.
-- Fetches article body text.
-- Generates formatted Word documents.
-
-If no LLM API key is configured, GovKB uses deterministic heuristics and verification. If an LLM is configured, it asks the model to analyze the HTML structure first, then still verifies the result by real fetching.
-
-## Install
-
-```bash
-pip install -r requirements.txt
-```
+GovKB is a Python tool for building a local knowledge base from Chinese government portal news. Given a government website URL or a place name, it discovers the official portal, identifies a news section, scrapes recent articles, extracts article bodies, and writes one `.docx` file per article.
 
 ## Quick Start
 
-Run a small smoke test against Xianyang with only one list page:
+Install dependencies:
 
 ```bash
-python -m govkb.main run --url www.xianyang.gov.cn --months 1 --max-pages 1
+python -m pip install -r requirements.txt
 ```
 
-Run the normal 3-month workflow:
+Run the CLI:
 
 ```bash
 python -m govkb.main run --url https://www.xianyang.gov.cn --months 3
 ```
 
-Launch the GUI:
+Run by place name with an LLM configured:
+
+```bash
+python -m govkb.main run --city 青岛市政府 --months 3
+```
+
+Launch the desktop GUI:
 
 ```bash
 python -m govkb.gui
 ```
 
-The GUI can show the agent trace, including recipe hits, candidate news columns tried, off-site columns skipped, and whether the final result came from the agent or the legacy fallback.
+Launch the local WebUI:
+
+```bash
+python -m govkb.main webui
+```
+
+The GUI and WebUI save provider, model, API key, output directory, and recipe directory in a local user settings file. On Windows this is under `%APPDATA%\GovKB\settings.json`. The API key is not written into the project repository, but it is stored locally in plain text, so use this only on a trusted machine.
 
 Generated documents are written under `output/`, for example:
 
 ```text
-output/咸阳市人民政府_新闻_2026-04-19起/
+output/咸阳市人民政府_新闻_2026-04-19起
 ```
+
+If the user input contains a Chinese place name, GovKB keeps that region signal in the generated directory name even when the resolved site is represented by a domain.
 
 ## Configuration
 
@@ -105,58 +97,43 @@ python -m govkb.main --config path/to/config.yaml run --url www.xianyang.gov.cn 
 
 ```bash
 python -m govkb.main run --url <government-site-url> [--months 3] [--max-pages 30]
+python -m govkb.main run --city <place-name> [--months 3] [--max-pages 30]
+python -m govkb.main webui [--host 127.0.0.1] [--port 8765]
 ```
 
 Options:
 
 - `--url`: Government portal URL.
+- `--city`: Place name. Requires an LLM config so GovKB can propose official portal candidates.
 - `--months`: Recent months to scrape. Internally approximated as `months * 30` days.
 - `--max-pages`: Maximum list pages to scan. Useful for testing.
 - `--config`: Path to config file. Defaults to `config.yaml`.
-
-`--city` requires an LLM config. GovKB asks the model for official government portal candidates, verifies that the returned URL is reachable and under a `gov.cn` domain, then continues with the normal workflow.
-
-```bash
-python -m govkb.main run --city 青岛市政府 --months 1 --max-pages 1
-```
 
 ## Architecture
 
 ```text
 govkb/
 ├── main.py
+├── gui.py
+├── webui.py
 ├── core/
 │   ├── orchestrator.py
 │   ├── site_analyzer.py
 │   ├── scraper.py
 │   └── docx_generator.py
+├── agent/
+│   ├── site_agent.py
+│   └── tools.py
 ├── llm/
 │   ├── client.py
 │   └── prompts.py
 ├── models/
-│   ├── site_info.py
-│   └── article.py
 └── utils/
-    └── http.py
 ```
-
-## Verified Example
-
-The following command was verified during development:
-
-```bash
-python -m govkb.main run --url www.xianyang.gov.cn --months 1 --max-pages 1
-```
-
-It identified:
-
-- Portal: `咸阳市人民政府`
-- News section: `本地要闻`
-- List URL: `https://www.xianyang.gov.cn/xyxw/xyxw_14/`
-- Generated documents: `24/24`
 
 ## Notes
 
-- Government sites vary heavily. GovKB combines LLM analysis, heuristic fallback, and real-page verification to handle structural differences.
-- Official website URLs come from either a URL entered by the user or, for city/name input, an LLM-generated candidate that GovKB verifies before scraping.
+- Official website URLs come from either a URL entered by the user or, for place-name input, LLM-generated candidates that GovKB verifies before scraping.
+- Pagination patterns are saved only when observed from real page links, dynamic APIs, or page scripts.
+- Recipes are cached under `recipes/`; use the GUI/WebUI cache clear button when a site recipe needs to be rediscovered.
 - Please keep `rate_limit` conservative when scraping public websites.

@@ -33,15 +33,11 @@ class Orchestrator:
         months: int = 3,
         max_pages: int | None = None,
     ) -> dict[str, Any]:
-        """
-        Execute analysis, scraping, and docx generation.
+        """Execute analysis, scraping, and docx generation."""
 
-        target or url must currently be a government portal URL. City resolution is
-        intentionally deferred until search integration is added.
-        """
-
+        target_hint = target or city or url or ""
         resolved_url = self._resolve_target(target=target, url=url, city=city)
-        site = self.analyzer.analyze(resolved_url, portal_name_hint="", target_hint=target or city or url or "")
+        site = self.analyzer.analyze(resolved_url, portal_name_hint="", target_hint=target_hint)
 
         scraper_config = self.config.get("scraper") or {}
         output_config = self.config.get("output") or {}
@@ -56,7 +52,7 @@ class Orchestrator:
         page_limit = int(max_pages or scraper_config.get("max_pages") or Scraper.DEFAULT_MAX_PAGES)
         articles = scraper.scrape_all(start_date, concurrency=concurrency, max_pages=page_limit)
 
-        output_dir = self._build_output_dir(site.portal_name, start_date, output_config)
+        output_dir = self._build_output_dir(site, start_date, output_config, target_hint)
         generator = DocxGenerator(
             site,
             filename_pattern=str(output_config.get("filename_pattern") or "{index:03d}_{date}_{title}.docx"),
@@ -87,10 +83,29 @@ class Orchestrator:
         days = max(1, months) * 30
         return (datetime.now() - timedelta(days=days)).strftime("%Y-%m-%d")
 
-    def _build_output_dir(self, portal_name: str, start_date: str, output_config: dict[str, Any]) -> Path:
+    def _build_output_dir(self, site: Any, start_date: str, output_config: dict[str, Any], target_hint: str = "") -> Path:
         base_dir = Path(str(output_config.get("dir") or "output"))
-        safe_name = self._safe_path_name(portal_name or "govkb")
+        region_name = self._region_name(target_hint) or self._region_name(getattr(site, "portal_name", ""))
+        portal_name = getattr(site, "portal_name", "") or getattr(site, "domain", "") or "govkb"
+        if region_name and region_name not in portal_name:
+            display_name = f"{region_name}_{portal_name}"
+        else:
+            display_name = portal_name or region_name or "govkb"
+        safe_name = self._safe_path_name(display_name)
         return base_dir / f"{safe_name}_新闻_{start_date}起"
+
+    def _region_name(self, value: str) -> str:
+        import re
+
+        text = re.sub(r"https?://\S+|www\.\S+", "", value or "")
+        match = re.search(r"([\u4e00-\u9fff]{2,20})(?:人民政府|政府|官网|门户|网站)?", text)
+        if not match:
+            return ""
+        name = match.group(1)
+        for suffix in ("人民政府", "政府", "官网", "门户", "网站"):
+            if name.endswith(suffix):
+                name = name[: -len(suffix)]
+        return name.strip()
 
     def _safe_path_name(self, value: str) -> str:
         import re

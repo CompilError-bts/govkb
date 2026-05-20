@@ -36,12 +36,17 @@ jobs:
         run: |
           pyinstaller --noconfirm --clean --onefile --name govkb govkb/main.py
 
+      - name: Build WebUI executable
+        run: |
+          pyinstaller --noconfirm --clean --onefile --name govkb-webui govkb/webui.py
+
       - name: Prepare release bundle
         shell: pwsh
         run: |
           New-Item -ItemType Directory -Force release | Out-Null
           Copy-Item dist/govkb-gui.exe release/
           Copy-Item dist/govkb.exe release/
+          Copy-Item dist/govkb-webui.exe release/
           Copy-Item README.md release/
           Copy-Item config.yaml release/config.example.yaml
           Compress-Archive -Path release/* -DestinationPath govkb-windows-amd64.zip -Force
@@ -53,6 +58,7 @@ jobs:
             govkb-windows-amd64.zip
             dist/govkb-gui.exe
             dist/govkb.exe
+            dist/govkb-webui.exe
           draft: false
           prerelease: false
           generate_release_notes: true

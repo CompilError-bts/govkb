@@ -25,6 +25,12 @@ def main(argv: list[str] | None = None) -> int:
         print("wizard mode is not implemented yet. Use: govkb run --url https://example.gov.cn --months 3")
         return 2
 
+    if args.command == "webui":
+        from govkb.webui import serve
+
+        serve(args.host, args.port, open_browser=not args.no_open)
+        return 0
+
     parser.print_help()
     return 2
 
@@ -42,6 +48,11 @@ def build_parser() -> argparse.ArgumentParser:
     run_parser.add_argument("--max-pages", type=int, default=None, help="Maximum list pages to scan")
 
     subparsers.add_parser("wizard", help="Interactive mode")
+
+    webui_parser = subparsers.add_parser("webui", help="Start the local WebUI")
+    webui_parser.add_argument("--host", default="127.0.0.1")
+    webui_parser.add_argument("--port", type=int, default=8765)
+    webui_parser.add_argument("--no-open", action="store_true", help="Do not open the browser automatically")
     return parser
 
 
