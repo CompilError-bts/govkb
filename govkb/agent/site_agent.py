@@ -106,7 +106,11 @@ class SiteAgent:
     def _try_ranked_candidates(self, original_url: str, inspection: Any, portal_name_hint: str) -> SiteInfo | None:
         if getattr(inspection, "article_candidates", None):
             result = self.tools.try_extract_list(inspection.final_url or original_url)
-            if result.get("ok") and int(result.get("count") or 0) >= self.success_threshold:
+            if (
+                result.get("ok")
+                and int(result.get("count") or 0) >= self.success_threshold
+                and not getattr(inspection, "news_link_candidates", None)
+            ):
                 return self._site_from_extract_result(result, original_url, portal_name_hint, "新闻")
 
         for link in getattr(inspection, "news_link_candidates", [])[:8]:
@@ -213,7 +217,7 @@ class SiteAgent:
 
     def _pagination_pattern_from_evidence(self, evidence: list[dict[str, str]]) -> str:
         for item in evidence:
-            if item.get("type") != "observed_link":
+            if item.get("type") not in {"observed_link", "observed_script"}:
                 continue
             url = item.get("url") or ""
             if re.search(r"index_\d+\.s?html?$", url):

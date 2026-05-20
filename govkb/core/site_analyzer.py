@@ -339,6 +339,7 @@ class SiteAnalyzer:
             self._date_before_link_pattern(),
             self._date_after_link_pattern(),
             self._month_day_inside_link_pattern(),
+            self._split_year_month_day_pattern(),
             self.DEFAULT_ARTICLE_PATTERN,
         ]
         articles: list[dict[str, str]] = []
@@ -366,6 +367,10 @@ class SiteAnalyzer:
         month_day = data.get("month_day")
         if year and month_day:
             return f"{year}-{month_day}"
+        ym = data.get("ym")
+        day = data.get("day")
+        if ym and day:
+            return f"{ym}-{int(day):02d}"
         return ""
 
     def _xianyang_pattern(self) -> str:
@@ -379,6 +384,9 @@ class SiteAnalyzer:
 
     def _month_day_inside_link_pattern(self) -> str:
         return r'<a\b[^>]*href=["\'](?P<url>[^"\']+/art/(?P<year>\d{4})/\d{1,2}/\d{1,2}/[^"\']+\.html)["\'][^>]*>(?P<title>[\s\S]*?)<span>\s*(?P<month_day>\d{2}-\d{2})\s*</span>[\s\S]*?</a>'
+
+    def _split_year_month_day_pattern(self) -> str:
+        return r'<a\b[^>]*href=["\'](?P<url>[^"\']*t\d+_\d+\.s?html?)["\'][^>]*>[\s\S]{0,260}?class=["\'][^"\']*\bday\b[^"\']*["\'][^>]*>\s*(?P<day>\d{1,2})\s*</[\s\S]{0,260}?class=["\'][^"\']*\bym\b[^"\']*["\'][^>]*>\s*(?P<ym>\d{4}-\d{2})\s*</[\s\S]{0,500}?class=["\'][^"\']*\btit\b[^"\']*["\'][^>]*>\s*(?P<title>.*?)\s*</'
 
     def _correct_list_url_from_homepage(self, site: SiteInfo, html: str, base_url: str) -> SiteInfo | None:
         links = _LinkExtractor.collect(html, base_url)

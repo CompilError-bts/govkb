@@ -216,6 +216,7 @@ class Scraper:
                     r'(?P<date>\d{4}-\d{2}-\d{2})[\s\S]{0,120}?<a\b[^>]*?(?:title=["\'](?P<title_attr>[^"\']+)["\'][^>]*?)?href=["\'](?P<url>[^"\']+\.s?html?)["\'][^>]*>(?P<title>.*?)</a>',
                     r'<a\b(?=[^>]*href=["\'](?P<url>[^"\']+\.s?html?)["\'])(?=[^>]*(?:title=["\'](?P<title_attr>[^"\']+)["\']))[^>]*>(?P<title>.*?)</a>[\s\S]{0,80}?(?P<date>\d{4}-\d{2}-\d{2})',
                     r'<a\b[^>]*href=["\'](?P<url>[^"\']+/art/(?P<year>\d{4})/\d{1,2}/\d{1,2}/[^"\']+\.html)["\'][^>]*>(?P<title>[\s\S]*?)<span>\s*(?P<month_day>\d{2}-\d{2})\s*</span>[\s\S]*?</a>',
+                    r'<a\b[^>]*href=["\'](?P<url>[^"\']*t\d+_\d+\.s?html?)["\'][^>]*>[\s\S]{0,260}?class=["\'][^"\']*\bday\b[^"\']*["\'][^>]*>\s*(?P<day>\d{1,2})\s*</[\s\S]{0,260}?class=["\'][^"\']*\bym\b[^"\']*["\'][^>]*>\s*(?P<ym>\d{4}-\d{2})\s*</[\s\S]{0,500}?class=["\'][^"\']*\btit\b[^"\']*["\'][^>]*>\s*(?P<title>.*?)\s*</',
                     r'href=["\'](?P<url>[^"\']+\.s?html?)["\'][^>]*>(?P<title>.*?)</a>[\s\S]{0,120}?(?P<date>\d{4}-\d{2}-\d{2})',
                 ]
             )
@@ -239,6 +240,10 @@ class Scraper:
         month_day = data.get("month_day")
         if year and month_day:
             return f"{year}-{month_day}"
+        ym = data.get("ym")
+        day = data.get("day")
+        if ym and day:
+            return f"{ym}-{int(day):02d}"
         return ""
 
     def _extract_body(self, html: str) -> str:

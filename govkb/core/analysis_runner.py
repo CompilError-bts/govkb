@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 from typing import Any
+from urllib.parse import urlparse
 
 from govkb.agent.site_agent import SiteAgent
 from govkb.agent.memory import RecipeMemory
@@ -21,7 +22,7 @@ class AnalysisRunner:
     def analyze(self, url: str, *, portal_name_hint: str = "", target_hint: str = "") -> SiteInfo:
         cached = self.memory.load(url)
         if cached is not None:
-            if self._bad_cached_section(cached.news_section_name):
+            if self._bad_cached_recipe(cached):
                 self.trace = [f"recipe:stale_bad_section {cached.news_section_name}"]
             else:
                 verifier = SiteAnalyzer(None, timeout=self.timeout)
@@ -45,6 +46,13 @@ class AnalysisRunner:
         self.memory.save(site)
         self.trace = [*self.trace, "legacy:success", f"recipe:saved {site.domain}"]
         return site
+
+    def _bad_cached_recipe(self, site: SiteInfo) -> bool:
+        if self._bad_cached_section(site.news_section_name):
+            return True
+        list_path = (urlparse(site.news_list_url).path or "/").rstrip("/") or "/"
+        generic_names = {"", "新闻", "首页新闻", "news"}
+        return list_path == "/" and site.news_section_name.strip().lower() in generic_names
 
     def _bad_cached_section(self, name: str) -> bool:
         return any(keyword in name for keyword in ("走进", "概况", "旅游", "招商", "数据", "营商", "专题", "公告", "政策", "解读"))

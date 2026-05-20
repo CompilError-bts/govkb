@@ -329,6 +329,23 @@ class AgentTools:
         for href in re.findall(r'href=["\']([^"\']*(?:index_\d+|common_list_\d+)[^"\']*\.s?html?)["\']', html, re.I):
             evidence.append({"type": "observed_link", "url": urljoin(base_url, href)})
 
+        for match in re.finditer(
+            r'createPage\(\s*(?P<count>\d+)\s*,\s*(?P<current>\d+)\s*,\s*["\'](?P<name>[^"\']+)["\']\s*,\s*["\'](?P<ext>s?html?)["\']\s*\)',
+            html,
+            re.I,
+        ):
+            if int(match.group("count")) <= 1:
+                continue
+            sample = f"{match.group('name')}_1.{match.group('ext')}"
+            evidence.append(
+                {
+                    "type": "observed_script",
+                    "url": urljoin(base_url, sample),
+                    "page_count": match.group("count"),
+                    "source": "createPage",
+                }
+            )
+
         jpaas = self._jpaas_pagination_evidence(html, base_url)
         if jpaas:
             evidence.append(jpaas)
